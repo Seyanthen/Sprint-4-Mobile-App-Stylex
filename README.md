@@ -28,9 +28,10 @@ To recreate the development environment, you need the following software and/or 
 
 I found these websites useful in developing this software:
 
+* [W3Schools Type Script Tutorial](https://www.w3schools.com/typescript/index.php)
 * [W3Schools React Tutorial](https://www.w3schools.com/react/)
 * [React Native Crash Course](https://www.youtube.com/watch?v=XCifkDC0yXA)
-*
+* [How to Write AGENTS.md files](https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/)
 
 ## Future Work
 
