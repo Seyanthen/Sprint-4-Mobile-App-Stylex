@@ -2,6 +2,8 @@
 
 An app that allows users to draw, paint, and save their artwork.
 
+Initial drawing tools are drawing, erasing, drawing with a selected color, and color fill. Layers, brush customization, viewport zoom, drawing renaming, drawing jpg/pdf exporting, and canvas-size customization are planned future features.
+
 ## Instructions for Build and Use
 
 Steps to build and/or run the software:
