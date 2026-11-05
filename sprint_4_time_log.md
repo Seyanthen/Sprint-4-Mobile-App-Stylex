@@ -28,6 +28,16 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |----------|----------|:------:|--------------------------------------------|:-----------:|
 |11-02-26|10:15|MTG|Sprint 4 Planning Meeting|15|
 |11-02-26|10:15|TP|Sprint 4 Planning Meeting|15|
+|11-04-26|10:15|TP|Troubleshooting Codex|60|
+|11-05-26|5:40|IM|Development Enviroment Setup|60|
+||||||
+||||||
+||||||
+||||||
+||||||
+||||||
+||||||
+||||||
 ||||||
 ||||||
 ||||||
