@@ -5,14 +5,35 @@ import { DrawingCanvas } from '@/components/drawing/drawing-canvas';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { createEmptyDrawingState, type Color, type DrawingTool } from '@/domain/artwork';
+import { createEmptyDrawingState, type Color, type DrawingTool, type Point } from '@/domain/artwork';
 
 const DEFAULT_COLOR: Color = '#2563EB';
 
 export default function NewDrawingScreen() {
   const [selectedTool, setSelectedTool] = useState<DrawingTool>('draw');
-  const [selectedColor] = useState<Color>(DEFAULT_COLOR);
-  const [drawing] = useState(() => createEmptyDrawingState());
+  const [selectedColor, setSelectedColor] = useState<Color>(DEFAULT_COLOR);
+  const [drawing, setDrawing] = useState(() => createEmptyDrawingState());
+
+  const addStroke = (points: Point[]) => {
+    const tool = selectedTool === 'erase' ? 'erase' : selectedTool === 'draw' ? 'draw' : 'color';
+    setDrawing((current) => ({
+      ...current,
+      strokes: [...current.strokes, {
+        id: `stroke-${Date.now()}-${current.strokes.length}`,
+        points,
+        color: selectedColor,
+        width: 14,
+        tool,
+      }],
+    }));
+  };
+
+  const fillCanvas = () => {
+    setDrawing((current) => ({
+      ...current,
+      fills: [...current.fills, { id: `fill-${Date.now()}`, origin: { x: 0, y: 0 }, color: selectedColor }],
+    }));
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -20,19 +41,21 @@ export default function NewDrawingScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">New Drawing</ThemedText>
           <ThemedText themeColor="textSecondary">
-            Start with a fixed canvas. Drawing tools will be added in the next step.
+            Draw, erase, color, and fill on a fixed canvas.
           </ThemedText>
 
           <DrawingCanvas
             drawing={drawing}
             selectedTool={selectedTool}
             selectedColor={selectedColor}
+            onStrokeComplete={addStroke}
+            onFill={fillCanvas}
           />
 
           <ThemedView type="backgroundElement" style={styles.toolPanel}>
             <ThemedText type="smallBold">Drawing tools</ThemedText>
             <View style={styles.toolRow}>
-              {(['draw', 'erase', 'fill'] as const).map((tool) => (
+              {(['draw', 'color', 'erase', 'fill'] as const).map((tool) => (
                 <Pressable
                   key={tool}
                   accessibilityRole="button"
@@ -40,7 +63,7 @@ export default function NewDrawingScreen() {
                   onPress={() => setSelectedTool(tool)}
                   style={[styles.toolButton, selectedTool === tool && styles.selectedTool]}>
                   <ThemedText type="small">
-                    {tool === 'draw' ? 'Draw' : tool === 'erase' ? 'Erase' : 'Fill'}
+                    {tool === 'draw' ? 'Draw' : tool === 'color' ? 'Color' : tool === 'erase' ? 'Erase' : 'Fill'}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -48,6 +71,13 @@ export default function NewDrawingScreen() {
             <View style={styles.colorRow}>
               <View style={[styles.colorSwatch, { backgroundColor: selectedColor }]} />
               <ThemedText themeColor="textSecondary">Selected color {selectedColor}</ThemedText>
+            </View>
+            <View style={styles.colorRow}>
+              {(['#2563EB', '#DC2626', '#16A34A', '#F59E0B', '#111827'] as const).map((color) => (
+                <Pressable key={color} accessibilityRole="button" accessibilityLabel={`Select color ${color}`} onPress={() => setSelectedColor(color)}>
+                  <View style={[styles.paletteSwatch, { backgroundColor: color }, selectedColor === color && styles.selectedSwatch]} />
+                </Pressable>
+              ))}
             </View>
           </ThemedView>
         </ScrollView>
@@ -73,4 +103,6 @@ const styles = StyleSheet.create({
   selectedTool: { backgroundColor: '#C7D2FE' },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   colorSwatch: { width: 24, height: 24, borderRadius: 12 },
+  paletteSwatch: { width: 28, height: 28, borderRadius: 14, marginRight: Spacing.two },
+  selectedSwatch: { borderWidth: 3, borderColor: '#FFFFFF' },
 });

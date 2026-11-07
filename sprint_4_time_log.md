@@ -35,7 +35,7 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11-06-26|10:15|MTG|Stand Up Meeting|5|
 |11-06-26|10:20|TP|Group Project Work|70|
 |11-06-26|9:25|IM|Drawing Architecture|60|
-||||||
+|11-06-26|10:35|IM|Drawing Canvas and Initial Tools|60|
 ||||||
 ||||||
 ||||||

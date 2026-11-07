@@ -13,14 +13,14 @@ export type CanvasDimensions = {
 /** Colors are serialized as CSS-compatible values, such as #2563eb or rgba(...). */
 export type Color = string;
 
-export type DrawingTool = 'draw' | 'erase' | 'fill';
+export type DrawingTool = 'draw' | 'color' | 'erase' | 'fill';
 
 export type Stroke = {
   id: string;
   points: Point[];
   color: Color;
   width: number;
-  tool: Extract<DrawingTool, 'draw' | 'erase'>;
+  tool: Extract<DrawingTool, 'draw' | 'color' | 'erase'>;
 };
 
 export type FillOperation = {
