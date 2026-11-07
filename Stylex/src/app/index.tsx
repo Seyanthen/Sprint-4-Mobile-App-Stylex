@@ -1,103 +1,76 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { DrawingCanvas } from '@/components/drawing/drawing-canvas';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { createEmptyDrawingState, type Color, type DrawingTool } from '@/domain/artwork';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const DEFAULT_COLOR: Color = '#2563EB';
 
-export default function HomeScreen() {
+export default function NewDrawingScreen() {
+  const [selectedTool, setSelectedTool] = useState<DrawingTool>('draw');
+  const [selectedColor] = useState<Color>(DEFAULT_COLOR);
+  const [drawing] = useState(() => createEmptyDrawingState());
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+        <ScrollView contentContainerStyle={styles.content}>
+          <ThemedText type="title">New Drawing</ThemedText>
+          <ThemedText themeColor="textSecondary">
+            Start with a fixed canvas. Drawing tools will be added in the next step.
           </ThemedText>
-        </ThemedView>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <DrawingCanvas
+            drawing={drawing}
+            selectedTool={selectedTool}
+            selectedColor={selectedColor}
+          />
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-          <HintRow
-            title="This is my test Title" 
-            hint={<ThemedText type="code">This is my test Hint</ThemedText>}  
-          />
-          
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+          <ThemedView type="backgroundElement" style={styles.toolPanel}>
+            <ThemedText type="smallBold">Drawing tools</ThemedText>
+            <View style={styles.toolRow}>
+              {(['draw', 'erase', 'fill'] as const).map((tool) => (
+                <Pressable
+                  key={tool}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedTool === tool }}
+                  onPress={() => setSelectedTool(tool)}
+                  style={[styles.toolButton, selectedTool === tool && styles.selectedTool]}>
+                  <ThemedText type="small">
+                    {tool === 'draw' ? 'Draw' : tool === 'erase' ? 'Erase' : 'Fill'}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.colorRow}>
+              <View style={[styles.colorSwatch, { backgroundColor: selectedColor }]} />
+              <ThemedText themeColor="textSecondary">Selected color {selectedColor}</ThemedText>
+            </View>
+          </ThemedView>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  content: {
+    width: '100%',
     maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
+    alignSelf: 'center',
+    padding: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
   },
+  toolPanel: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
+  toolRow: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
+  toolButton: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 20 },
+  selectedTool: { backgroundColor: '#C7D2FE' },
+  colorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  colorSwatch: { width: 24, height: 24, borderRadius: 12 },
 });

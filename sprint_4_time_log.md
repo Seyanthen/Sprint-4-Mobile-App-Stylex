@@ -32,9 +32,9 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11-04-26|5:40|IM|Development Enviroment Setup|60|
 |11-05-26|10:15|IM|AGENTS.md tutorial|45|
 |11-05-26|1:20|IM|AGENTS.md refining|60|
-||||||
-||||||
-||||||
+|11-06-26|10:15|MTG|Stand Up Meeting|5|
+|11-06-26|10:20|TP|Group Project Work|70|
+|11-06-26|9:25|IM|Drawing Architecture|60|
 ||||||
 ||||||
 ||||||
@@ -57,7 +57,7 @@ _Note: Add more rows as needed._
 
 |Categroy                       |Total Time (Hours:Minutes)|
 |-------------------------------|:------------------------:|
-|IM - Individual Module         |           2:45           |
-|TP - Team Project              |           1:15           |
-|MTG - Class Meetings           |           0:15           |
-|**TOTAL**                      |         **4:15**         |
+|IM - Individual Module         |           3:45           |
+|TP - Team Project              |           2:25           |
+|MTG - Class Meetings           |           0:20           |
+|**TOTAL**                      |         **6:30**         |
