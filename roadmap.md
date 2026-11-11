@@ -4,7 +4,7 @@
 
 Stylex is currently an Expo Router starter app. The existing `Stylex/src/app/index.tsx` and `Stylex/src/app/explore.tsx` screens are still template screens, and `Stylex/src/components/app-tabs.tsx` exposes the starter `Home` and `Explore` tabs. The root README defines the product direction:
 
-- Initial tools: drawing, erasing, drawing with a selected color, and color fill.
+- Initial tools: drawing, erasing, drawing with a selected color, and region-based color fill.
 - Core product pages: New Drawing and Gallery.
 - Planned features: layers, brush customization, viewport zoom, drawing renaming, JPG/PDF export, and canvas-size customization.
 - Artwork must be saved locally and remain available after an app restart.
@@ -64,6 +64,8 @@ Deliver the first usable drawing experience: a fixed-size canvas with touch/poin
 - Build a reusable canvas component that receives typed drawing state and callbacks rather than owning all route-level state.
 - Support pointer/touch movement and completion events, including a reasonable minimum stroke width and coordinate conversion from screen space to canvas space.
 - Implement drawing with the selected color, erasing, and fill as explicit tool modes.
+- Make Fill a tap-based, region-based flood fill: fill only the connected region containing the tap point, bounded by existing marks or the canvas edge. An empty or unbounded canvas should fill as one region without crashing.
+- Choose a rendering/data representation that preserves fill boundaries and operation order so later strokes, erasing, saving, reopening, layers, and export can reproduce the filled regions accurately. Do not implement Fill as only a global background-color change.
 - Keep the first canvas size fixed, as canvas-size customization is a later feature.
 - Make the tool bar accessible and visibly communicate the selected tool and color.
 - Handle the web target if the existing Expo setup supports it, while prioritizing the target used for manual validation.
@@ -73,13 +75,13 @@ Deliver the first usable drawing experience: a fixed-size canvas with touch/poin
 - A user can draw multiple strokes on the canvas.
 - Eraser removes or masks marks according to the chosen representation.
 - A color can be selected and applied to new marks.
-- Fill operates on the canvas according to the chosen model, with no crashes on an empty canvas.
-- The UI clearly distinguishes the four initial tools.
+- Fill performs a region-based flood fill at the tapped point, respects boundaries created by existing marks, and has no crashes on an empty canvas.
+- The UI clearly distinguishes the three initial tool modes (Draw, Erase, and Fill) and the selected color palette.
 
 ### Agentic prompt
 
 ```text
-Implement Step 2 of roadmap.md in the Stylex repository. First inspect the typed drawing model from Step 1 and the installed Expo/React Native dependencies. Build a reusable, typed canvas component and a New Drawing screen that supports drawing, erasing, drawing with a selected color, and color fill.
+Implement Step 2 of roadmap.md in the Stylex repository. First inspect the typed drawing model from Step 1 and the installed Expo/React Native dependencies. Build a reusable, typed canvas component and a New Drawing screen that supports drawing with a selected color, erasing, and region-based color fill.
 
 Use React Native/Expo-compatible input handling and keep canvas state separate from presentation where practical. Use the fixed initial canvas size; do not add layers, zoom, custom brushes, export, or persistence in this session. Make tool selection and color selection visible and usable. Preserve existing theme conventions and unrelated work. Run npm run lint and npx tsc --noEmit from Stylex, then report manual validation steps and any platform limitations.
 ```

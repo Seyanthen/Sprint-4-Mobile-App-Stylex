@@ -6,7 +6,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 
-import type { Color, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
+import type { Color, DrawingOperation, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
 import { useTheme } from '@/hooks/use-theme';
 
 export type DrawingCanvasProps = {
@@ -14,7 +14,7 @@ export type DrawingCanvasProps = {
   selectedTool: DrawingTool;
   selectedColor: Color;
   onStrokeComplete: (points: Point[]) => void;
-  onFill: () => void;
+  onFill: (origin: Point) => void;
 };
 
 const DEFAULT_STROKE_WIDTH = 14;
@@ -53,7 +53,7 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
   const activePointsRef = useRef<Point[]>([]);
   const [previewPoints, setPreviewPoints] = useState<Point[]>([]);
   const scale = layout.width / drawing.canvas.width;
-  const fillColor = drawing.fills.at(-1)?.color ?? theme.backgroundElement;
+  const baseColor = theme.backgroundElement;
 
   const finishStroke = () => {
     if (activePointsRef.current.length > 0) onStrokeComplete(activePointsRef.current);
@@ -62,11 +62,11 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
   };
 
   const handleResponderGrant = (event: GestureResponderEvent) => {
+      const point = getPoint(event, layout.width, layout.height, drawing.canvas);
       if (selectedTool === 'fill') {
-        onFill();
+        onFill(point);
         return;
       }
-      const point = getPoint(event, layout.width, layout.height, drawing.canvas);
       activePointsRef.current = [point];
       setPreviewPoints([point]);
   };
@@ -78,12 +78,39 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
       setPreviewPoints([...activePointsRef.current]);
   };
 
-  const renderStroke = (stroke: Stroke) => {
-    const color = stroke.tool === 'erase' ? fillColor : stroke.color;
+  const renderStroke = (stroke: Stroke, eraseColor: Color) => {
+    const color = stroke.tool === 'erase' ? eraseColor : stroke.color;
     const points = stroke.points.length === 1 ? [stroke.points[0], stroke.points[0]] : stroke.points;
     return points.slice(1).map((point, segmentIndex) => (
       <Segment key={`${stroke.id}-${segmentIndex}`} from={points[segmentIndex]} to={point} color={color} width={stroke.width} scale={scale} />
     ));
+  };
+
+  const renderOperation = (operation: DrawingOperation, operationIndex: number) => {
+    if (operation.type === 'fill') {
+      return operation.fill.rectangles.map((rectangle, rectangleIndex) => (
+        <View
+          key={`${operation.fill.id}-${rectangleIndex}`}
+          pointerEvents="none"
+          accessibilityLabel={rectangleIndex === 0 ? `Canvas region filled with ${operation.fill.color}` : undefined}
+          style={[styles.fill, {
+            backgroundColor: operation.fill.color,
+            left: rectangle.x * scale,
+            top: rectangle.y * scale,
+            width: rectangle.width * scale,
+            height: rectangle.height * scale,
+          }]}
+        />
+      ));
+    }
+
+    const eraseColor = drawing.operations
+      .slice(0, operationIndex)
+      .reduce<Color>((color, previousOperation) => (
+        previousOperation.type === 'fill' ? previousOperation.fill.color : color
+      ), baseColor);
+
+    return renderStroke(operation.stroke, eraseColor);
   };
 
   return (
@@ -102,18 +129,21 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
       onResponderTerminate={finishStroke}
       style={[styles.canvas, {
         aspectRatio: drawing.canvas.width / drawing.canvas.height,
-        backgroundColor: fillColor,
+        backgroundColor: baseColor,
         borderColor: theme.backgroundSelected,
       }]}
     >
-      {scale > 0 && drawing.strokes.map(renderStroke)}
+      {scale > 0 && drawing.operations.map(renderOperation)}
       {scale > 0 && previewPoints.length > 0 && renderStroke({
         id: 'preview',
         points: previewPoints,
-        color: selectedTool === 'draw' ? '#111827' : selectedColor,
+        color: selectedColor,
         width: DEFAULT_STROKE_WIDTH,
-        tool: selectedTool === 'erase' ? 'erase' : 'color',
-      })}
+        tool: selectedTool === 'erase' ? 'erase' : 'draw',
+      }, drawing.operations
+        .reduce<Color>((color, operation) => (
+          operation.type === 'fill' ? operation.fill.color : color
+        ), baseColor))}
     </View>
   );
 }
@@ -129,5 +159,8 @@ const styles = StyleSheet.create({
   segment: {
     position: 'absolute',
     borderRadius: 999,
+  },
+  fill: {
+    position: 'absolute',
   },
 });

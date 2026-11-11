@@ -5,7 +5,7 @@ import { DrawingCanvas } from '@/components/drawing/drawing-canvas';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { createEmptyDrawingState, type Color, type DrawingTool, type Point } from '@/domain/artwork';
+import { createEmptyDrawingState, createRegionFill, type Color, type DrawingTool, type Point } from '@/domain/artwork';
 
 const DEFAULT_COLOR: Color = '#2563EB';
 
@@ -15,23 +15,33 @@ export default function NewDrawingScreen() {
   const [drawing, setDrawing] = useState(() => createEmptyDrawingState());
 
   const addStroke = (points: Point[]) => {
-    const tool = selectedTool === 'erase' ? 'erase' : selectedTool === 'draw' ? 'draw' : 'color';
+    if (selectedTool === 'fill') return;
     setDrawing((current) => ({
       ...current,
-      strokes: [...current.strokes, {
-        id: `stroke-${Date.now()}-${current.strokes.length}`,
-        points,
-        color: selectedColor,
-        width: 14,
-        tool,
+      operations: [...current.operations, {
+        type: 'stroke',
+        stroke: {
+          id: `stroke-${Date.now()}-${current.operations.length}`,
+          points,
+          color: selectedColor,
+          width: 14,
+          tool: selectedTool,
+        },
       }],
     }));
   };
 
-  const fillCanvas = () => {
+  const fillCanvas = (origin: Point) => {
     setDrawing((current) => ({
       ...current,
-      fills: [...current.fills, { id: `fill-${Date.now()}`, origin: { x: 0, y: 0 }, color: selectedColor }],
+      operations: (() => {
+        const fill = createRegionFill(current, origin, selectedColor);
+        if (fill.rectangles.length === 0) return current.operations;
+        return [...current.operations, {
+          type: 'fill' as const,
+          fill: { ...fill, id: `fill-${Date.now()}-${current.operations.length}` },
+        }];
+      })(),
     }));
   };
 
@@ -41,7 +51,7 @@ export default function NewDrawingScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">New Drawing</ThemedText>
           <ThemedText themeColor="textSecondary">
-            Draw, erase, color, and fill on a fixed canvas.
+            Draw with the selected color, erase, and fill on a fixed canvas.
           </ThemedText>
 
           <DrawingCanvas
@@ -55,15 +65,16 @@ export default function NewDrawingScreen() {
           <ThemedView type="backgroundElement" style={styles.toolPanel}>
             <ThemedText type="smallBold">Drawing tools</ThemedText>
             <View style={styles.toolRow}>
-              {(['draw', 'color', 'erase', 'fill'] as const).map((tool) => (
+              {(['draw', 'erase', 'fill'] as const).map((tool) => (
                 <Pressable
                   key={tool}
                   accessibilityRole="button"
+                  accessibilityLabel={`${tool === 'draw' ? 'Draw' : tool === 'erase' ? 'Erase' : 'Fill'} tool`}
                   accessibilityState={{ selected: selectedTool === tool }}
                   onPress={() => setSelectedTool(tool)}
                   style={[styles.toolButton, selectedTool === tool && styles.selectedTool]}>
                   <ThemedText type="small">
-                    {tool === 'draw' ? 'Draw' : tool === 'color' ? 'Color' : tool === 'erase' ? 'Erase' : 'Fill'}
+                    {tool === 'draw' ? 'Draw' : tool === 'erase' ? 'Erase' : 'Fill'}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -74,7 +85,12 @@ export default function NewDrawingScreen() {
             </View>
             <View style={styles.colorRow}>
               {(['#2563EB', '#DC2626', '#16A34A', '#F59E0B', '#111827'] as const).map((color) => (
-                <Pressable key={color} accessibilityRole="button" accessibilityLabel={`Select color ${color}`} onPress={() => setSelectedColor(color)}>
+                <Pressable
+                  key={color}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select color ${color}`}
+                  accessibilityState={{ selected: selectedColor === color }}
+                  onPress={() => setSelectedColor(color)}>
                   <View style={[styles.paletteSwatch, { backgroundColor: color }, selectedColor === color && styles.selectedSwatch]} />
                 </Pressable>
               ))}

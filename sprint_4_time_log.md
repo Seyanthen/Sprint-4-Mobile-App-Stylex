@@ -36,8 +36,12 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11-06-26|10:20|TP|Group Project Work|70|
 |11-06-26|9:25|IM|Drawing Architecture|60|
 |11-06-26|10:35|IM|Drawing Canvas and Initial Tools|60|
-||||||
-||||||
+|11-09-26|10:15|TP|Team Project Work Day|60|
+|11-09-26|10:15|TP|Project Fixes outside of class|35|
+|11-10-26|11:15|TP|Sprint 4 implementation review|30|
+|11-10-26|1:10|TP|Recurring Transactions Modal migration|30|
+|11-10-26|7:00|IM||60|
+|11-11-26|10:15|MTG|Team Review Meeting|15|
 ||||||
 ||||||
 ||||||
