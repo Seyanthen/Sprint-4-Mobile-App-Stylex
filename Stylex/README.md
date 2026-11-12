@@ -41,6 +41,19 @@ This command will move the starter code to the **example** directory and create 
 - If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
 - Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
 
+### Android development build
+
+Stylex uses React Native Skia for the drawing canvas, so mobile testing requires a development build rather than Expo Go. On Windows, use the project Android command wrapper:
+
+```text
+scripts\android-cli.cmd avds
+scripts\android-cli.cmd start Medium_Phone
+scripts\android-cli.cmd devices
+scripts\android-cli.cmd run
+```
+
+The wrapper configures the Android SDK path, `adb`, the emulator tools, and the Android user directory for each command. Rebuild the development app after adding or changing native dependencies. A PowerShell helper is also available at `scripts/android-env.ps1` for sessions that permit local script execution.
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:

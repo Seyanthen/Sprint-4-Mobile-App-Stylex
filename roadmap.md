@@ -66,6 +66,8 @@ Deliver the first usable drawing experience: a fixed-size canvas with touch/poin
 - Implement drawing with the selected color, erasing, and fill as explicit tool modes.
 - Make Fill a tap-based, region-based flood fill: fill only the connected region containing the tap point, bounded by existing marks or the canvas edge. An empty or unbounded canvas should fill as one region without crashing.
 - Choose a rendering/data representation that preserves fill boundaries and operation order so later strokes, erasing, saving, reopening, layers, and export can reproduce the filled regions accurately. Do not implement Fill as only a global background-color change.
+- Use a real canvas renderer for the drawing surface rather than one view per stroke segment. Strokes should render as continuous paths with rounded caps and joins, and erasing should use canvas compositing/masking rather than repainting with a guessed background color. If a native canvas dependency is required, document its development-build requirement and verify its Expo SDK compatibility.
+- The current renderer uses `@shopify/react-native-skia`; native testing requires a development build containing the Skia native module, while web rendering must wait for CanvasKit initialization.
 - Keep the first canvas size fixed, as canvas-size customization is a later feature.
 - Make the tool bar accessible and visibly communicate the selected tool and color.
 - Handle the web target if the existing Expo setup supports it, while prioritizing the target used for manual validation.

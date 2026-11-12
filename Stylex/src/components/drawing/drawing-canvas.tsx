@@ -1,48 +1,51 @@
-import { useRef, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  type GestureResponderEvent,
-  type LayoutChangeEvent,
-} from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
+import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 
-import type { Color, DrawingOperation, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
+import type { DrawingOperation, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
+import { loadSkiaWeb } from './skia-web';
 import { useTheme } from '@/hooks/use-theme';
 
 export type DrawingCanvasProps = {
   drawing: DrawingState;
   selectedTool: DrawingTool;
-  selectedColor: Color;
+  selectedColor: string;
   onStrokeComplete: (points: Point[]) => void;
   onFill: (origin: Point) => void;
 };
 
 const DEFAULT_STROKE_WIDTH = 14;
 
-function getPoint(event: GestureResponderEvent, width: number, height: number, canvas: DrawingState['canvas']): Point {
+function getPoint(
+  event: GestureResponderEvent,
+  width: number,
+  height: number,
+  canvas: DrawingState['canvas'],
+): Point {
   return {
     x: Math.max(0, Math.min(canvas.width, (event.nativeEvent.locationX / Math.max(width, 1)) * canvas.width)),
     y: Math.max(0, Math.min(canvas.height, (event.nativeEvent.locationY / Math.max(height, 1)) * canvas.height)),
   };
 }
 
-function Segment({ from, to, color, width, scale }: { from: Point; to: Point; color: Color; width: number; scale: number }) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.sqrt(dx * dx + dy * dy) * scale;
-  const angle = `${(Math.atan2(dy, dx) * 180) / Math.PI}deg`;
+function createPath(points: Point[]) {
+  if (points.length === 0) return Skia.Path.Make();
+  const commands = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`);
+  if (points.length === 1) commands.push(`L ${points[0].x} ${points[0].y}`);
+  return Skia.Path.MakeFromSVGString(commands.join(' ')) ?? Skia.Path.Make();
+}
 
+function StrokePath({ stroke, erase }: { stroke: Stroke; erase: boolean }) {
+  const path = useMemo(() => createPath(stroke.points), [stroke.points]);
   return (
-    <View
-      pointerEvents="none"
-      style={[styles.segment, {
-        width: Math.max(length, width * scale),
-        height: Math.max(width * scale, 2),
-        left: from.x * scale,
-        top: from.y * scale - width * scale / 2,
-        backgroundColor: color,
-        transform: [{ rotate: angle }],
-      }]}
+    <Path
+      path={path}
+      style="stroke"
+      color={erase ? undefined : stroke.color}
+      strokeWidth={stroke.width}
+      strokeCap="round"
+      strokeJoin="round"
+      blendMode={erase ? 'clear' : undefined}
     />
   );
 }
@@ -52,8 +55,21 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const activePointsRef = useRef<Point[]>([]);
   const [previewPoints, setPreviewPoints] = useState<Point[]>([]);
+  const [skiaReady, setSkiaReady] = useState(Platform.OS !== 'web');
   const scale = layout.width / drawing.canvas.width;
-  const baseColor = theme.backgroundElement;
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      loadSkiaWeb().then(() => setSkiaReady(true));
+    }
+  }, []);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    setLayout({
+      width: event.nativeEvent.layout.width,
+      height: event.nativeEvent.layout.height,
+    });
+  };
 
   const finishStroke = () => {
     if (activePointsRef.current.length > 0) onStrokeComplete(activePointsRef.current);
@@ -62,62 +78,46 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
   };
 
   const handleResponderGrant = (event: GestureResponderEvent) => {
-      const point = getPoint(event, layout.width, layout.height, drawing.canvas);
-      if (selectedTool === 'fill') {
-        onFill(point);
-        return;
-      }
-      activePointsRef.current = [point];
-      setPreviewPoints([point]);
+    const point = getPoint(event, layout.width, layout.height, drawing.canvas);
+    if (selectedTool === 'fill') {
+      onFill(point);
+      return;
+    }
+    activePointsRef.current = [point];
+    setPreviewPoints([point]);
   };
 
   const handleResponderMove = (event: GestureResponderEvent) => {
-      if (selectedTool === 'fill') return;
-      const point = getPoint(event, layout.width, layout.height, drawing.canvas);
-      activePointsRef.current = [...activePointsRef.current, point];
-      setPreviewPoints([...activePointsRef.current]);
+    if (selectedTool === 'fill') return;
+    const point = getPoint(event, layout.width, layout.height, drawing.canvas);
+    const currentPoints = activePointsRef.current;
+    const previousPoint = currentPoints[currentPoints.length - 1];
+    const distance = previousPoint ? Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y) : 0;
+    const interpolationSteps = Math.max(1, Math.ceil(distance / (DEFAULT_STROKE_WIDTH / 2)));
+    const interpolatedPoints = Array.from({ length: interpolationSteps }, (_, index) => {
+      const progress = (index + 1) / interpolationSteps;
+      return {
+        x: (previousPoint?.x ?? point.x) + (point.x - (previousPoint?.x ?? point.x)) * progress,
+        y: (previousPoint?.y ?? point.y) + (point.y - (previousPoint?.y ?? point.y)) * progress,
+      };
+    });
+    activePointsRef.current = [...currentPoints, ...interpolatedPoints];
+    setPreviewPoints([...activePointsRef.current]);
   };
 
-  const renderStroke = (stroke: Stroke, eraseColor: Color) => {
-    const color = stroke.tool === 'erase' ? eraseColor : stroke.color;
-    const points = stroke.points.length === 1 ? [stroke.points[0], stroke.points[0]] : stroke.points;
-    return points.slice(1).map((point, segmentIndex) => (
-      <Segment key={`${stroke.id}-${segmentIndex}`} from={points[segmentIndex]} to={point} color={color} width={stroke.width} scale={scale} />
-    ));
-  };
+  const fillOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'fill' }> => operation.type === 'fill');
+  const drawOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'stroke' }> => operation.type === 'stroke' && operation.stroke.tool === 'draw');
+  const eraseOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'stroke' }> => operation.type === 'stroke' && operation.stroke.tool === 'erase');
 
-  const renderOperation = (operation: DrawingOperation, operationIndex: number) => {
-    if (operation.type === 'fill') {
-      return operation.fill.rectangles.map((rectangle, rectangleIndex) => (
-        <View
-          key={`${operation.fill.id}-${rectangleIndex}`}
-          pointerEvents="none"
-          accessibilityLabel={rectangleIndex === 0 ? `Canvas region filled with ${operation.fill.color}` : undefined}
-          style={[styles.fill, {
-            backgroundColor: operation.fill.color,
-            left: rectangle.x * scale,
-            top: rectangle.y * scale,
-            width: rectangle.width * scale,
-            height: rectangle.height * scale,
-          }]}
-        />
-      ));
-    }
-
-    const eraseColor = drawing.operations
-      .slice(0, operationIndex)
-      .reduce<Color>((color, previousOperation) => (
-        previousOperation.type === 'fill' ? previousOperation.fill.color : color
-      ), baseColor);
-
-    return renderStroke(operation.stroke, eraseColor);
-  };
+  if (!skiaReady) {
+    return <View accessibilityLabel="Drawing canvas loading" accessibilityRole="image" style={[styles.canvas, { backgroundColor: theme.backgroundElement }]} />;
+  }
 
   return (
     <View
       accessibilityLabel="Drawing canvas"
       accessibilityRole="image"
-      onLayout={(event: LayoutChangeEvent) => setLayout(event.nativeEvent.layout)}
+      onLayout={handleLayout}
       onStartShouldSetResponderCapture={() => true}
       onMoveShouldSetResponderCapture={() => true}
       onStartShouldSetResponder={() => true}
@@ -129,21 +129,45 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
       onResponderTerminate={finishStroke}
       style={[styles.canvas, {
         aspectRatio: drawing.canvas.width / drawing.canvas.height,
-        backgroundColor: baseColor,
+        backgroundColor: theme.backgroundElement,
         borderColor: theme.backgroundSelected,
       }]}
     >
-      {scale > 0 && drawing.operations.map(renderOperation)}
-      {scale > 0 && previewPoints.length > 0 && renderStroke({
-        id: 'preview',
-        points: previewPoints,
-        color: selectedColor,
-        width: DEFAULT_STROKE_WIDTH,
-        tool: selectedTool === 'erase' ? 'erase' : 'draw',
-      }, drawing.operations
-        .reduce<Color>((color, operation) => (
-          operation.type === 'fill' ? operation.fill.color : color
-        ), baseColor))}
+      <Canvas pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {scale > 0 && (
+          <Group transform={[{ scale }]}>
+            <Rect x={0} y={0} width={drawing.canvas.width} height={drawing.canvas.height} color={theme.backgroundElement} />
+            {fillOperations.flatMap((operation) => operation.fill.rectangles.map((rectangle, rectangleIndex) => (
+              <Rect
+                key={`${operation.fill.id}-${rectangleIndex}`}
+                x={rectangle.x}
+                y={rectangle.y}
+                width={rectangle.width}
+                height={rectangle.height}
+                color={operation.fill.color}
+              />
+            )))}
+            {drawOperations.map((operation) => (
+              <StrokePath key={operation.stroke.id} stroke={operation.stroke} erase={false} />
+            ))}
+            {eraseOperations.map((operation) => (
+              <StrokePath key={operation.stroke.id} stroke={operation.stroke} erase />
+            ))}
+            {previewPoints.length > 0 && selectedTool !== 'fill' && (
+              <StrokePath
+                stroke={{
+                  id: 'preview',
+                  points: previewPoints,
+                  color: selectedColor,
+                  width: DEFAULT_STROKE_WIDTH,
+                  tool: selectedTool,
+                }}
+                erase={selectedTool === 'erase'}
+              />
+            )}
+          </Group>
+        )}
+      </Canvas>
     </View>
   );
 }
@@ -155,12 +179,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     overflow: 'hidden',
-  },
-  segment: {
-    position: 'absolute',
-    borderRadius: 999,
-  },
-  fill: {
-    position: 'absolute',
   },
 });
