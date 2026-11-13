@@ -20,7 +20,13 @@ export type Stroke = {
   points: Point[];
   color: Color;
   width: number;
+  opacity: number;
   tool: Extract<DrawingTool, 'draw' | 'erase'>;
+};
+
+export type BrushSettings = {
+  size: number;
+  opacity: number;
 };
 
 export type FillOperation = {
@@ -41,10 +47,18 @@ export type DrawingOperation =
   | { type: 'stroke'; stroke: Stroke }
   | { type: 'fill'; fill: FillOperation };
 
+export type DrawingLayer = {
+  id: string;
+  name: string;
+  visible: boolean;
+  operations: DrawingOperation[];
+};
+
 /** The serializable vector representation used by the drawing engine and storage layer. */
 export type DrawingState = {
   canvas: CanvasDimensions;
-  operations: DrawingOperation[];
+  layers: DrawingLayer[];
+  activeLayerId: string;
 };
 
 export type Artwork = {
@@ -63,7 +77,22 @@ export const DEFAULT_CANVAS_DIMENSIONS: CanvasDimensions = {
 export function createEmptyDrawingState(
   canvas: CanvasDimensions = DEFAULT_CANVAS_DIMENSIONS,
 ): DrawingState {
-  return { canvas, operations: [] };
+  const layer = createLayer('layer-1', 'Layer 1');
+  return { canvas, layers: [layer], activeLayerId: layer.id };
+}
+
+export const DEFAULT_BRUSH_SETTINGS: BrushSettings = { size: 14, opacity: 1 };
+
+export function createLayer(id: string, name: string): DrawingLayer {
+  return { id, name, visible: true, operations: [] };
+}
+
+export function getActiveLayer(drawing: DrawingState): DrawingLayer {
+  return drawing.layers.find((layer) => layer.id === drawing.activeLayerId) ?? drawing.layers[0];
+}
+
+export function getVisibleOperations(drawing: DrawingState): DrawingOperation[] {
+  return drawing.layers.filter((layer) => layer.visible).flatMap((layer) => layer.operations);
 }
 
 const FLOOD_FILL_COLUMNS = 128;
@@ -128,7 +157,7 @@ export function createRegionFill(
   const totalCells = FLOOD_FILL_COLUMNS * rows;
   const blocked = new Uint8Array(totalCells);
 
-  drawing.operations.forEach((operation) => {
+  getVisibleOperations(drawing).forEach((operation) => {
     if (operation.type === 'stroke') markStroke(blocked, operation.stroke, drawing.canvas, rows);
   });
 

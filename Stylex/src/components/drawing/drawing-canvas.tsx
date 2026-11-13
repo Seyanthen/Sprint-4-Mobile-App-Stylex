@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 
-import type { DrawingOperation, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
+import type { BrushSettings, DrawingState, DrawingTool, Point, Stroke } from '@/domain/artwork';
 import { loadSkiaWeb } from './skia-web';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -10,6 +10,7 @@ export type DrawingCanvasProps = {
   drawing: DrawingState;
   selectedTool: DrawingTool;
   selectedColor: string;
+  brushSettings: BrushSettings;
   onStrokeComplete: (points: Point[]) => void;
   onFill: (origin: Point) => void;
 };
@@ -43,6 +44,7 @@ function StrokePath({ stroke, erase }: { stroke: Stroke; erase: boolean }) {
       style="stroke"
       color={erase ? undefined : stroke.color}
       strokeWidth={stroke.width}
+      opacity={stroke.opacity}
       strokeCap="round"
       strokeJoin="round"
       blendMode={erase ? 'clear' : undefined}
@@ -50,7 +52,7 @@ function StrokePath({ stroke, erase }: { stroke: Stroke; erase: boolean }) {
   );
 }
 
-export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeComplete, onFill }: DrawingCanvasProps) {
+export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSettings, onStrokeComplete, onFill }: DrawingCanvasProps) {
   const theme = useTheme();
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const activePointsRef = useRef<Point[]>([]);
@@ -105,10 +107,6 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
     setPreviewPoints([...activePointsRef.current]);
   };
 
-  const fillOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'fill' }> => operation.type === 'fill');
-  const drawOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'stroke' }> => operation.type === 'stroke' && operation.stroke.tool === 'draw');
-  const eraseOperations = drawing.operations.filter((operation): operation is Extract<DrawingOperation, { type: 'stroke' }> => operation.type === 'stroke' && operation.stroke.tool === 'erase');
-
   if (!skiaReady) {
     return <View accessibilityLabel="Drawing canvas loading" accessibilityRole="image" style={[styles.canvas, { backgroundColor: theme.backgroundElement }]} />;
   }
@@ -137,29 +135,27 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, onStrokeCo
         {scale > 0 && (
           <Group transform={[{ scale }]}>
             <Rect x={0} y={0} width={drawing.canvas.width} height={drawing.canvas.height} color={theme.backgroundElement} />
-            {fillOperations.flatMap((operation) => operation.fill.rectangles.map((rectangle, rectangleIndex) => (
-              <Rect
-                key={`${operation.fill.id}-${rectangleIndex}`}
-                x={rectangle.x}
-                y={rectangle.y}
-                width={rectangle.width}
-                height={rectangle.height}
-                color={operation.fill.color}
-              />
-            )))}
-            {drawOperations.map((operation) => (
-              <StrokePath key={operation.stroke.id} stroke={operation.stroke} erase={false} />
-            ))}
-            {eraseOperations.map((operation) => (
-              <StrokePath key={operation.stroke.id} stroke={operation.stroke} erase />
-            ))}
+            {drawing.layers.filter((layer) => layer.visible).flatMap((layer) => layer.operations).map((operation) => operation.type === 'fill'
+              ? operation.fill.rectangles.map((rectangle, rectangleIndex) => (
+                <Rect
+                  key={`${operation.fill.id}-${rectangleIndex}`}
+                  x={rectangle.x}
+                  y={rectangle.y}
+                  width={rectangle.width}
+                  height={rectangle.height}
+                  color={operation.fill.color}
+                />
+              ))
+              : <StrokePath key={operation.stroke.id} stroke={operation.stroke} erase={operation.stroke.tool === 'erase'} />
+            )}
             {previewPoints.length > 0 && selectedTool !== 'fill' && (
               <StrokePath
                 stroke={{
                   id: 'preview',
                   points: previewPoints,
                   color: selectedColor,
-                  width: DEFAULT_STROKE_WIDTH,
+                  width: brushSettings.size,
+                  opacity: brushSettings.opacity,
                   tool: selectedTool,
                 }}
                 erase={selectedTool === 'erase'}

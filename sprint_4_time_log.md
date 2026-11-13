@@ -40,13 +40,13 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11-09-26|10:15|TP|Project Fixes outside of class|35|
 |11-10-26|11:15|TP|Sprint 4 implementation review|30|
 |11-10-26|1:10|TP|Recurring Transactions Modal migration|30|
-|11-10-26|7:00|IM|Canvas Rendering and Fill Tool|105|
+|11-10-26|7:00|IM|Canvas and Fill Tool|105|
 |11-11-26|10:15|MTG|Team Review Meeting|60|
 |11-11-26|11:15|TP|Local Hosting Documentation|20|
 |11-11-26|12:30|IM|Mobile Emulator Configuration|80|
 |11-12-26|2:05|IM|Mobile Emulator Troubleshooting|25|
-||||||
-||||||
+|11-12-26|4:00|IM|Drawing Canvas Rendering and Tools|30|
+|11-12-26|6:35|IM|Gallery Implementation||
 ||||||
 ||||||
 ||||||
