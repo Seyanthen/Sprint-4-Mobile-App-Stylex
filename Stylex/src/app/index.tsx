@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { DrawingCanvas } from '@/components/drawing/drawing-canvas';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { createEmptyDrawingState, createLayer, createRegionFill, type Artwork, type BrushSettings, type Color, type DrawingTool, type Point } from '@/domain/artwork';
+import { createEmptyDrawingState, createLayer, createRegionFill, getViewportCanvasDimensions, type Artwork, type BrushSettings, type Color, type DrawingTool, type Point } from '@/domain/artwork';
 import { createArtworkId, readArtwork, saveArtwork } from '@/storage/artwork-storage';
 
 const DEFAULT_COLOR: Color = '#2563EB';
@@ -14,14 +14,17 @@ const DEFAULT_BRUSH: BrushSettings = { size: 14, opacity: 1 };
 
 export default function NewDrawingScreen() {
   const { artworkId } = useLocalSearchParams<{ artworkId?: string }>();
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const viewportCanvas = getViewportCanvasDimensions(viewportWidth, viewportHeight);
   const [selectedTool, setSelectedTool] = useState<DrawingTool>('draw');
   const [selectedColor, setSelectedColor] = useState<Color>(DEFAULT_COLOR);
   const [brushSettings, setBrushSettings] = useState<BrushSettings>(DEFAULT_BRUSH);
-  const [drawing, setDrawing] = useState(() => createEmptyDrawingState());
+  const [drawing, setDrawing] = useState(() => createEmptyDrawingState(viewportCanvas));
   const [title, setTitle] = useState('Untitled Drawing');
   const [savedArtwork, setSavedArtwork] = useState<Artwork | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(artworkId));
   const [isSaving, setIsSaving] = useState(false);
+  const [isToolsVisible, setIsToolsVisible] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -44,6 +47,13 @@ export default function NewDrawingScreen() {
       .finally(() => active && setIsLoading(false));
     return () => { active = false; };
   }, [artworkId]);
+
+  useEffect(() => {
+    const hasOperations = drawing.layers.some((layer) => layer.operations.length > 0);
+    if (artworkId || savedArtwork || hasOperations) return;
+    if (drawing.canvas.width === viewportCanvas.width && drawing.canvas.height === viewportCanvas.height) return;
+    setDrawing((current) => ({ ...current, canvas: viewportCanvas }));
+  }, [artworkId, drawing.canvas.height, drawing.canvas.width, drawing.layers, savedArtwork, viewportCanvas]);
 
   const addStroke = (points: Point[]) => {
     if (selectedTool === 'fill') return;
@@ -137,7 +147,7 @@ export default function NewDrawingScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.content}>
           <ThemedText type="title">New Drawing</ThemedText>
           <ThemedText themeColor="textSecondary">
             Draw with the selected color, erase, and fill on a fixed canvas.
@@ -159,17 +169,44 @@ export default function NewDrawingScreen() {
           {statusMessage ? <ThemedText themeColor="textSecondary">{statusMessage}</ThemedText> : null}
           {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
 
-          <DrawingCanvas
-            drawing={drawing}
-            selectedTool={selectedTool}
-            selectedColor={selectedColor}
-            brushSettings={brushSettings}
-            onStrokeComplete={addStroke}
-            onFill={fillCanvas}
-          />
+          <View style={styles.canvasArea}>
+            <DrawingCanvas
+              drawing={drawing}
+              selectedTool={selectedTool}
+              selectedColor={selectedColor}
+              brushSettings={brushSettings}
+              onStrokeComplete={addStroke}
+              onFill={fillCanvas}
+              fillAvailableSpace
+            />
+          </View>
 
-          <ThemedView type="backgroundElement" style={styles.toolPanel}>
-            <ThemedText type="smallBold">Drawing tools</ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open drawing tools"
+            onPress={() => setIsToolsVisible(true)}
+            style={styles.toolsLauncher}>
+            <View style={[styles.colorSwatch, { backgroundColor: selectedColor }]} />
+            <View style={styles.toolsLauncherCopy}>
+              <ThemedText type="smallBold">{selectedTool === 'draw' ? 'Draw' : selectedTool === 'erase' ? 'Erase' : 'Fill'} · {selectedColor}</ThemedText>
+            </View>
+            <ThemedText style={styles.toolsLauncherArrow}>Drawing Tool</ThemedText>
+          </Pressable>
+
+          <Modal
+            visible={isToolsVisible}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setIsToolsVisible(false)}>
+            <View style={styles.modalBackdrop}>
+              <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+                <ThemedView type="backgroundElement" style={styles.toolPanel}>
+                <View style={styles.modalHeader}>
+                  <ThemedText type="subtitle">Drawing tools</ThemedText>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Close drawing tools" onPress={() => setIsToolsVisible(false)} style={styles.smallButton}>
+                    <ThemedText style={styles.actionButtonText}>Done</ThemedText>
+                  </Pressable>
+                </View>
             <View style={styles.toolRow}>
               {(['draw', 'erase', 'fill'] as const).map((tool) => (
                 <Pressable
@@ -218,8 +255,11 @@ export default function NewDrawingScreen() {
               <Pressable accessibilityRole="button" accessibilityLabel={`Move ${layer.name} down`} disabled={index === drawing.layers.length - 1} onPress={() => moveLayer(layer.id, 1)}><ThemedText type="small">↓</ThemedText></Pressable>
               <Pressable accessibilityRole="button" disabled={drawing.layers.length <= 1} onPress={removeActiveLayer}><ThemedText type="small">Remove</ThemedText></Pressable>
             </View>)}
-          </ThemedView>
-        </ScrollView>
+                </ThemedView>
+              </ScrollView>
+            </View>
+          </Modal>
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -230,6 +270,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
   safeArea: { flex: 1 },
   content: {
+    flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
@@ -237,7 +278,15 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.three,
   },
+  canvasArea: { flex: 1, minHeight: 0, width: '100%' },
   toolPanel: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
+  toolsLauncher: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Spacing.three, borderWidth: 1, borderColor: '#A1A1AA' },
+  toolsLauncherCopy: { flex: 1, gap: 2 },
+  toolsLauncherArrow: { color: '#2563EB' },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.42)' },
+  modalScroll: { flex: 1 },
+  modalScrollContent: { flexGrow: 1, justifyContent: 'flex-end' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   toolRow: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
   toolButton: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 20 },
   selectedTool: { backgroundColor: '#C7D2FE' },

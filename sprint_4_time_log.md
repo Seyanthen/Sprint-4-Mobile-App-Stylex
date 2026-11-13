@@ -46,9 +46,9 @@ The expected minimum amount of time each Sprint for each category is as follows:
 |11-11-26|12:30|IM|Mobile Emulator Configuration|80|
 |11-12-26|2:05|IM|Mobile Emulator Troubleshooting|25|
 |11-12-26|4:00|IM|Drawing Canvas Rendering and Tools|30|
-|11-12-26|6:35|IM|Gallery Implementation||
-||||||
-||||||
+|11-12-26|6:35|IM|Gallery Implementation|25|
+|11-13-26|10:15|IM|Agentic Project Cleanup|60|
+|11-23-26|10:15|MTG|Individual Class Presentations|60|
 ||||||
 ||||||
 ||||||
@@ -61,7 +61,7 @@ _Note: Add more rows as needed._
 
 |Categroy                       |Total Time (Hours:Minutes)|
 |-------------------------------|:------------------------:|
-|IM - Individual Module         |           6:50           |
+|IM - Individual Module         |          10:10           |
 |TP - Team Project              |           5:20           |
-|MTG - Class Meetings           |           1:20           |
-|**TOTAL**                      |        **13:30**         |
+|MTG - Class Meetings           |           2:20           |
+|**TOTAL**                      |        **17:50**         |

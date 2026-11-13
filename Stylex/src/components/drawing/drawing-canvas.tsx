@@ -13,6 +13,8 @@ export type DrawingCanvasProps = {
   brushSettings: BrushSettings;
   onStrokeComplete: (points: Point[]) => void;
   onFill: (origin: Point) => void;
+  onInteractionChange?: (active: boolean) => void;
+  fillAvailableSpace?: boolean;
 };
 
 const DEFAULT_STROKE_WIDTH = 14;
@@ -52,7 +54,7 @@ function StrokePath({ stroke, erase }: { stroke: Stroke; erase: boolean }) {
   );
 }
 
-export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSettings, onStrokeComplete, onFill }: DrawingCanvasProps) {
+export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSettings, onStrokeComplete, onFill, onInteractionChange, fillAvailableSpace = false }: DrawingCanvasProps) {
   const theme = useTheme();
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const activePointsRef = useRef<Point[]>([]);
@@ -77,12 +79,15 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSetti
     if (activePointsRef.current.length > 0) onStrokeComplete(activePointsRef.current);
     activePointsRef.current = [];
     setPreviewPoints([]);
+    onInteractionChange?.(false);
   };
 
   const handleResponderGrant = (event: GestureResponderEvent) => {
+    onInteractionChange?.(true);
     const point = getPoint(event, layout.width, layout.height, drawing.canvas);
     if (selectedTool === 'fill') {
       onFill(point);
+      onInteractionChange?.(false);
       return;
     }
     activePointsRef.current = [point];
@@ -125,8 +130,8 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSetti
       onResponderMove={handleResponderMove}
       onResponderRelease={finishStroke}
       onResponderTerminate={finishStroke}
-      style={[styles.canvas, {
-        aspectRatio: drawing.canvas.width / drawing.canvas.height,
+      style={[styles.canvas, fillAvailableSpace && styles.fillAvailableSpace, {
+        aspectRatio: fillAvailableSpace ? undefined : drawing.canvas.width / drawing.canvas.height,
         backgroundColor: theme.backgroundElement,
         borderColor: theme.backgroundSelected,
       }]}
@@ -171,9 +176,13 @@ export function DrawingCanvas({ drawing, selectedTool, selectedColor, brushSetti
 const styles = StyleSheet.create({
   canvas: {
     width: '100%',
-    maxWidth: 720,
     borderWidth: 1,
     borderRadius: 16,
     overflow: 'hidden',
+  },
+  fillAvailableSpace: {
+    flex: 1,
+    minHeight: 0,
+    aspectRatio: undefined,
   },
 });

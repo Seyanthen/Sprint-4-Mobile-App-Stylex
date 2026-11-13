@@ -74,6 +74,13 @@ export const DEFAULT_CANVAS_DIMENSIONS: CanvasDimensions = {
   height: 768,
 };
 
+/** Returns a canvas sized for the available app viewport, with safe bounds for small screens. */
+export function getViewportCanvasDimensions(viewportWidth: number, viewportHeight: number): CanvasDimensions {
+  const width = Math.max(280, Math.round(viewportWidth - 32));
+  const height = Math.max(240, Math.round((viewportHeight - 240) / 1.5));
+  return { width, height };
+}
+
 export function createEmptyDrawingState(
   canvas: CanvasDimensions = DEFAULT_CANVAS_DIMENSIONS,
 ): DrawingState {
